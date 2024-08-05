@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Zoom in</title>
+    </head>
+    <body>
+        <div>
+            <h2>Usage</h2>
+            <p>There are 2 things you can do using this extension: </p>
+            <ul>
+                <li>Send a reaction</li>
+                <li>Ask a question</li>
+            </ul>
+            <p>In order to use the functionality, you can copy one of the lines and paste it in your `Terminal`.</p>
+            <p>Replace "🔥" or "Whats up?" with your value.</p>
+            <pre id="usage"></pre>
+            <p>More info: <a href="https://surfly.online/api/schema/swagger-ui/#/Space%20Session/spaces_sessions_message_create" target="_blank">Docs</a></p>
+        </div>
+        <div id="logs"></div>
+        <script>
+
+        function getUrl() {
+          return `${window.parent.global_vars.CONSOLE_ORIGIN}/api/spaces/${getSpaceId()}/sessions/${window.parent.SESSION_ID}/message/`;
+        }
+
+        function getSpaceId() {
+          const state = JSON.parse(window.parent.document.getElementById("vue-state").innerText);
+          return state.space.id
+        }
+
+        function addUsage() {
+          var usage = document.getElementById("usage");
+          usage.innerHTML = `curl -X POST -H "Authorization: REST rk_n2ew16lUTYfolTI2fAP8vIvyiYgVddwR" ${getUrl()} --json '{"action":"reaction","content":"🔥","type":"rest"}'<br/>curl -X POST -H "Authorization: REST rk_n2ew16lUTYfolTI2fAP8vIvyiYgVddwR" ${getUrl()} --json '{"action":"question","content":"What's up?","type":"rest"}'`
+        }
+
+        addUsage();
+
+        surflyExtension.surflySession.onMessage.addListener((message, sender) => {
+          console.log("Received event", message);
+          if (message.type === "rest") {
+            // append the message to the logs div
+            var logs = document.getElementById("logs");
+            var log = document.createElement("div");
+            var pre = document.createElement("pre");
+            pre.textContent = JSON.stringify(message);
+            log.appendChild(pre);
+            logs.appendChild(log);
+          }
+        });
+        </script>
+</html>
