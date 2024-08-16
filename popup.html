@@ -1,51 +1,68 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
     <head>
-        <title>Zoom in</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Emoji Reactions</title>
+        <style>
+            .button {
+                font-size: 12px;
+                margin: 5px;
+                padding: 4px 8px;
+                cursor: pointer;
+            }
+        </style>
     </head>
     <body>
+        <button class="button" onclick="sendReaction('🔥')">🔥</button>
+        <button class="button" onclick="sendReaction('💸')">💸</button>
+        <button class="button" onclick="sendReaction('👍')">👍</button>
+        <button class="button" onclick="sendReaction('😢')">😢</button>
+        <button class="button" onclick="sendReaction('👏')">👏</button>
         <div>
-            <h2>Usage</h2>
-            <p>There are 2 things you can do using this extension: </p>
-            <ul>
-                <li>Send a reaction</li>
-                <li>Ask a question</li>
-            </ul>
-            <p>In order to use the functionality, you can copy one of the lines and paste it in your `Terminal`.</p>
-            <p>Replace "🔥" or "Whats up?" with your value.</p>
-            <pre id="usage"></pre>
-            <p>More info: <a href="https://surfly.online/api/schema/swagger-ui/#/Space%20Session/spaces_sessions_message_create" target="_blank">Docs</a></p>
+            <input type="text" id="reaction-text" />
+            <button
+                type="button"
+                onclick="sendReaction(document.getElementById('reaction-text').value)"
+            >
+                Send
+            </button>
         </div>
-        <div id="logs"></div>
+
         <script>
+            function getUrl() {
+                return `${window.parent.global_vars.CONSOLE_ORIGIN}/api/spaces/${getSpaceId()}/sessions/${window.parent.SESSION_ID}/message/`;
+            }
 
-        function getUrl() {
-          return `${window.parent.global_vars.CONSOLE_ORIGIN}/api/spaces/${getSpaceId()}/sessions/${window.parent.SESSION_ID}/message/`;
-        }
+            function getSpaceId() {
+                const state = JSON.parse(
+                    window.parent.document.getElementById("vue-state")
+                        .innerText,
+                );
+                return state.space.id;
+            }
 
-        function getSpaceId() {
-          const state = JSON.parse(window.parent.document.getElementById("vue-state").innerText);
-          return state.space.id
-        }
+            function sendReaction(emoji) {
+                const url = getUrl();
+                const payload = {
+                    action: "reaction",
+                    content: emoji,
+                    type: "rest",
+                };
 
-        function addUsage() {
-          var usage = document.getElementById("usage");
-          usage.innerHTML = `curl -X POST -H "Authorization: REST rk_n2ew16lUTYfolTI2fAP8vIvyiYgVddwR" ${getUrl()} --json '{"action":"reaction","content":"🔥","type":"rest"}'<br/>curl -X POST -H "Authorization: REST rk_n2ew16lUTYfolTI2fAP8vIvyiYgVddwR" ${getUrl()} --json '{"action":"question","content":"What's up?","type":"rest"}'`
-        }
-
-        addUsage();
-
-        surflyExtension.surflySession.onMessage.addListener((message, sender) => {
-          console.log("Received event", message);
-          if (message.type === "rest") {
-            // append the message to the logs div
-            var logs = document.getElementById("logs");
-            var log = document.createElement("div");
-            var pre = document.createElement("pre");
-            pre.textContent = JSON.stringify(message);
-            log.appendChild(pre);
-            logs.appendChild(log);
-          }
-        });
+                fetch(url, {
+                    method: "POST",
+                    headers: {
+                        Authorization:
+                            "REST rk_n2ew16lUTYfolTI2fAP8vIvyiYgVddwR",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
+                })
+                    .then((response) => response.json())
+                    .then((data) => console.log("Success:", data))
+                    .catch((error) => console.error("Error:", error));
+            }
         </script>
+    </body>
 </html>
