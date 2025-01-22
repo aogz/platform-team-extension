@@ -1,13 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Questions and Reactions",
+  "name": "Start page",
   "version": "1.0",
-  "action": {
-    "default_popup": "popup.html"
-  },
-  "content_scripts": [
-    {
-      "js": ["content_script.js"]
-    }
-  ]
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  }
 }
