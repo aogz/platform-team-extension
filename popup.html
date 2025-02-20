@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Finger Tracking</title>
+    <style>
+        /* Added styles section for better organization */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+        }
+        #output {
+            border: 1px solid black;
+            margin-bottom: 10px;
+        }
+        #startButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+</head>
+<body>
+    <video id="video" playsinline style="display: none;"></video>
+    <canvas id="output"></canvas>
+    <button id="startButton">Start Game</button>
+    <div id="errorMessage" class="error" style="display: none;"></div>
+
+    <script>
+        class HandTracker {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('output');
+                this.ctx = this.canvas.getContext('2d');
+                this.startButton = document.getElementById('startButton');
+                this.errorMessage = document.getElementById('errorMessage');
+                
+                this.isDetecting = false;
+                this.animationFrameId = null;
+                this.hands = null;
+                this.lastDetectionTime = 0;
+                this.DETECTION_INTERVAL = 1000 / 15; // Increased to 15 FPS for better performance
+                
+                // Initialize MediaPipe Hands
+                this.hands = new Hands({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                    }
+                });
+                
+                // Initialize hands before starting camera
+                this.initializeHands();
+                
+                this.bindEvents();
+            }
+
+            async initializeHands() {
+                await this.hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 0,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+
+                this.hands.onResults((results) => this.onResults(results));
+            }
+
+            async setupCamera() {
+                try {
+                    // Wait for hands to initialize before setting up camera
+                    await this.hands.initialize();
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: 320,
+                            height: 240,
+                            facingMode: 'user'
+                        }
+                    });
+                    this.video.srcObject = stream;
+                    
+                    // Use MediaPipe's Camera Utils for better camera handling
+                    const camera = new Camera(this.video, {
+                        onFrame: async () => {
+                            if (this.isDetecting) {
+                                await this.hands.send({image: this.video});
+                            }
+                        },
+                        width: 320,
+                        height: 240
+                    });
+                    camera.start();
+
+                    return new Promise((resolve) => {
+                        this.video.onloadedmetadata = () => {
+                            this.canvas.width = this.video.videoWidth;
+                            this.canvas.height = this.video.videoHeight;
+                            resolve(this.video);
+                        };
+                    });
+                } catch (error) {
+                    this.showError('Camera access denied or not available');
+                    throw error;
+                }
+            }
+
+            bindEvents() {
+                this.startButton.addEventListener('click', () => this.start());
+                window.addEventListener('unload', () => this.cleanup());
+                // Add resize handler
+                window.addEventListener('resize', () => this.handleResize());
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+                this.startButton.disabled = true;
+            }
+
+            handleResize() {
+                if (this.video.videoWidth) {
+                    this.canvas.width = this.video.videoWidth;
+                    this.canvas.height = this.video.videoHeight;
+                }
+            }
+
+            onResults(results) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const indexFinger = results.multiHandLandmarks[0][8];
+                    if (indexFinger) {
+                        // Convert normalized coordinates to pixel coordinates
+                        const x = indexFinger.x * this.canvas.width;
+                        const y = indexFinger.y * this.canvas.height;
+                        this.drawHand({ x, y });
+
+                        // Send finger position to newtab
+                        surflyExtension.runtime.sendMessage({
+                            type: "fingerPosition",
+                            position: {
+                                x: indexFinger.x, // Send normalized coordinates (0-1)
+                                y: indexFinger.y
+                            }
+                        });
+
+                        // Send finger position to newtab
+                        surflyExtension.tabs.sendMessage(null, {
+                            type: "fingerPosition",
+                            position: {
+                                x: indexFinger.x, // Send normalized coordinates (0-1)
+                                y: indexFinger.y
+                            }
+                        });
+                    }
+
+                    // Draw all hand landmarks
+                    drawConnectors(this.ctx, results.multiHandLandmarks[0], HAND_CONNECTIONS, 
+                        {color: '#00FF00', lineWidth: 2});
+                    drawLandmarks(this.ctx, results.multiHandLandmarks[0], 
+                        {color: '#FF0000', lineWidth: 1});
+                }
+            }
+
+            drawHand(indexFinger) {
+                // Create gradient for better visibility
+                const gradient = this.ctx.createRadialGradient(
+                    indexFinger.x, indexFinger.y, 2,
+                    indexFinger.x, indexFinger.y, 10
+                );
+                gradient.addColorStop(0, 'rgba(255, 0, 0, 0.8)');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+
+                this.ctx.save();
+                
+                // Draw finger position
+                this.ctx.beginPath();
+                this.ctx.arc(indexFinger.x, indexFinger.y, 10, 0, 2 * Math.PI);
+                this.ctx.fillStyle = gradient;
+                this.ctx.fill();
+
+                // Draw coordinates
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                this.ctx.fillRect(10, 10, 200, 30);
+                this.ctx.fillStyle = 'black';
+                this.ctx.font = '16px Arial';
+                this.ctx.fillText(
+                    `Index finger: (${indexFinger.x.toFixed(0)}, ${indexFinger.y.toFixed(0)})`,
+                    20, 30
+                );
+                
+                this.ctx.restore();
+            }
+
+            async start() {
+                try {
+                    await this.setupCamera();
+                    this.startButton.style.display = 'none';
+                    this.isDetecting = true;
+                } catch (error) {
+                    console.error('Start error:', error);
+                    this.showError('Failed to start tracking');
+                }
+            }
+
+            cleanup() {
+                this.isDetecting = false;
+                if (this.animationFrameId) {
+                    cancelAnimationFrame(this.animationFrameId);
+                }
+                if (this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                }
+            }
+        }
+
+        // Modify initApp to remove detector initialization
+        async function initApp() {
+            const startButton = document.getElementById('startButton');
+            startButton.disabled = true;
+            startButton.textContent = 'Loading...';
+
+            try {
+                const handTracker = new HandTracker();
+                startButton.disabled = false;
+                startButton.textContent = 'Start Game';
+            } catch (error) {
+                console.error('Initialization error:', error);
+                startButton.textContent = 'Error loading model';
+            }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>

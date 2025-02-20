@@ -302,73 +302,75 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         
-        // Snake game variables
-        let snake = [{x: 10, y: 10}];
-        let food = {x: 15, y: 15};
-        let dx = 1;
-        let dy = 0;
-        const gridSize = 20;
-        let gameSpeed = 100;
+        // Remove snake-related variables and add finger game variables
+        let fingerPosition = { x: 100, y: 100 };  // Starting position
+        let fingerSize = 20;  // Starting size
+        let food = { x: 15, y: 15 };
         let gameLoop;
         
-        // Game controls
-        document.addEventListener('keydown', (e) => {
-            switch(e.key) {
-                case 'ArrowUp':
-                if (dy !== 1) { dx = 0; dy = -1; }
-                break;
-                case 'ArrowDown':
-                if (dy !== -1) { dx = 0; dy = 1; }
-                break;
-                case 'ArrowLeft':
-                if (dx !== 1) { dx = -1; dy = 0; }
-                break;
-                case 'ArrowRight':
-                if (dx !== -1) { dx = 1; dy = 0; }
-                break;
-            }
-        });
-        
         function generateFood() {
+            // Calculate bounds for the central 60% of the screen
+            const margin = {
+                x: canvas.width * 0.2,  // 20% margin from left and right
+                y: canvas.height * 0.2  // 20% margin from top and bottom
+            };
+            
             food = {
-                x: Math.floor(Math.random() * (canvas.width / gridSize)),
-                y: Math.floor(Math.random() * (canvas.height / gridSize))
+                x: margin.x + Math.random() * (canvas.width * 0.6),  // Generate between 20% and 80% of width
+                y: margin.y + Math.random() * (canvas.height * 0.6)  // Generate between 20% and 80% of height
             };
         }
+        
+        // Update finger position from extension messages
+        surflyExtension.runtime.onMessage.addListener((message, sender) => {
+            if (message.type === "fingerPosition") {
+                fingerPosition = {
+                    x: (1 - message.position.x) * canvas.width,
+                    y: message.position.y * canvas.height
+                };
+            }
+        });
         
         function drawGame() {
             // Clear canvas with transparency
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Move snake
-            const head = {
-                x: (snake[0].x + dx + Math.floor(canvas.width / gridSize)) % Math.floor(canvas.width / gridSize),
-                y: (snake[0].y + dy + Math.floor(canvas.height / gridSize)) % Math.floor(canvas.height / gridSize)
-            };
+            // Constrain finger position to canvas bounds
+            const constrainedX = Math.max(fingerSize, Math.min(canvas.width - fingerSize, fingerPosition.x));
+            const constrainedY = Math.max(fingerSize, Math.min(canvas.height - fingerSize, fingerPosition.y));
             
-            snake.unshift(head);
-            
-            // Check if food eaten
-            if (head.x === food.x && head.y === food.y) {
+            // Check collision with food
+            const distance = Math.hypot(constrainedX - food.x, constrainedY - food.y);
+            if (distance < fingerSize) {
                 generateFood();
-            } else {
-                snake.pop();
+                fingerSize += 5;  // Increase finger indicator size
             }
-            
-            // Draw snake
-            ctx.fillStyle = '#0f0';
-            snake.forEach(segment => {
-                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
-            });
             
             // Draw food
             ctx.fillStyle = '#f00';
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+            ctx.beginPath();
+            ctx.arc(food.x, food.y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Draw finger position using constrained coordinates
+            ctx.save();
+            const gradient = ctx.createRadialGradient(
+                constrainedX, constrainedY, 2,
+                constrainedX, constrainedY, fingerSize
+            );
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.beginPath();
+            ctx.arc(constrainedX, constrainedY, fingerSize, 0, 2 * Math.PI);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            ctx.restore();
         }
         
         // Start game
         generateFood();
-        gameLoop = setInterval(drawGame, gameSpeed);
+        gameLoop = setInterval(drawGame, 1000/60); // 60 FPS
         
         // Add this before the snake game code
         // Update date and time
@@ -448,8 +450,6 @@
                 console.error('Error fetching BambooHR data:', error);
             }
         }
-
-
 
         // Initial updates
         updateDateTime();

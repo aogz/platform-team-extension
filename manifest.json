@@ -4,5 +4,14 @@
   "version": "1.0",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
-  }
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "https://cdn.jsdelivr.net/*",
+    "https://tfhub.dev/*",
+    "https://www.kaggle.com/*",
+    "https://storage.googleapis.com/*"
+  ]
 }
