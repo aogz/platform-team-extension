@@ -144,23 +144,13 @@
                         const y = indexFinger.y * this.canvas.height;
                         this.drawHand({ x, y });
 
-                        // Send finger position to newtab
-                        surflyExtension.runtime.sendMessage({
+                        surflyExtension.surflySession.apiRequest({cmd: 'broadcast_message', message: {
                             type: "fingerPosition",
                             position: {
                                 x: indexFinger.x, // Send normalized coordinates (0-1)
                                 y: indexFinger.y
                             }
-                        });
-
-                        // Send finger position to newtab
-                        surflyExtension.tabs.sendMessage(null, {
-                            type: "fingerPosition",
-                            position: {
-                                x: indexFinger.x, // Send normalized coordinates (0-1)
-                                y: indexFinger.y
-                            }
-                        });
+                        }});
                     }
 
                     // Draw all hand landmarks

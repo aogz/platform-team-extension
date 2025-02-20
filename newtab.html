@@ -323,6 +323,7 @@
         
         // Update finger position from extension messages
         surflyExtension.runtime.onMessage.addListener((message, sender) => {
+            console.log("runtime", message);
             if (message.type === "fingerPosition") {
                 fingerPosition = {
                     x: (1 - message.position.x) * canvas.width,
@@ -330,6 +331,15 @@
                 };
             }
         });
+
+        surflyExtension.surflySession.onMessage.addListener(messageData => {
+            console.log("surflySession", messageData);
+            if (messageData.event_type === 'relocated') {
+                console.log('Session relocated to: ', messageData.url);
+            }
+        });
+
+
         
         function drawGame() {
             // Clear canvas with transparency
