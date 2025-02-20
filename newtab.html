@@ -302,11 +302,16 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         
-        // Remove snake-related variables and add finger game variables
-        let fingerPosition = { x: 100, y: 100 };  // Starting position
-        let fingerSize = 20;  // Starting size
+        // Remove single finger variables and add players object
+        let players = new Map();  // Map to store player positions and colors
         let food = { x: 15, y: 15 };
         let gameLoop;
+        
+        // Function to generate a random color for new players
+        function getRandomColor() {
+            const hue = Math.random() * 360;
+            return `hsl(${hue}, 70%, 70%)`;  // Using HSL for better color distribution
+        }
         
         function generateFood() {
             // Calculate bounds for the central 60% of the screen
@@ -321,40 +326,48 @@
             };
         }
         
-        // Update finger position from extension messages
+        // Update finger position handling to support multiple players
         surflyExtension.runtime.onMessage.addListener((message, sender) => {
-            console.log("runtime", message);
-            if (message.type === "fingerPosition") {
-                fingerPosition = {
+            if (message?.type === "fingerPosition") {
+                const position = {
                     x: (1 - message.position.x) * canvas.width,
                     y: message.position.y * canvas.height
                 };
+                
+                if (!players.has(message.clientIndex)) {
+                    players.set(message.clientIndex, {
+                        position: position,
+                        size: 5,  // Starting size
+                        color: getRandomColor()
+                    });
+                } else {
+                    players.get(message.clientIndex).position = position;
+                }
             }
         });
 
-        surflyExtension.surflySession.onMessage.addListener(messageData => {
-            console.log("surflySession", messageData);
-            if (messageData.event_type === 'relocated') {
-                console.log('Session relocated to: ', messageData.url);
+        surflyExtension.surflySession.onMessage.addListener(message => {
+            if (message?.type === "fingerPosition") {
+                const position = {
+                    x: (1 - message.position.x) * canvas.width,
+                    y: message.position.y * canvas.height
+                };
+                
+                if (!players.has(message.clientIndex)) {
+                    players.set(message.clientIndex, {
+                        position: position,
+                        size: 5,  // Starting size
+                        color: getRandomColor()
+                    });
+                } else {
+                    players.get(message.clientIndex).position = position;
+                }
             }
         });
-
-
         
         function drawGame() {
             // Clear canvas with transparency
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Constrain finger position to canvas bounds
-            const constrainedX = Math.max(fingerSize, Math.min(canvas.width - fingerSize, fingerPosition.x));
-            const constrainedY = Math.max(fingerSize, Math.min(canvas.height - fingerSize, fingerPosition.y));
-            
-            // Check collision with food
-            const distance = Math.hypot(constrainedX - food.x, constrainedY - food.y);
-            if (distance < fingerSize) {
-                generateFood();
-                fingerSize += 5;  // Increase finger indicator size
-            }
             
             // Draw food
             ctx.fillStyle = '#f00';
@@ -362,20 +375,34 @@
             ctx.arc(food.x, food.y, 5, 0, 2 * Math.PI);
             ctx.fill();
 
-            // Draw finger position using constrained coordinates
-            ctx.save();
-            const gradient = ctx.createRadialGradient(
-                constrainedX, constrainedY, 2,
-                constrainedX, constrainedY, fingerSize
-            );
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            // Draw each player
+            players.forEach((player, clientIndex) => {
+                const constrainedX = Math.max(player.size, Math.min(canvas.width - player.size, player.position.x));
+                const constrainedY = Math.max(player.size, Math.min(canvas.height - player.size, player.position.y));
+                
+                // Check collision with food
+                const distance = Math.hypot(constrainedX - food.x, constrainedY - food.y);
+                if (distance < player.size) {
+                    generateFood();
+                    player.size += 3;  // Increase player's finger size
+                }
 
-            ctx.beginPath();
-            ctx.arc(constrainedX, constrainedY, fingerSize, 0, 2 * Math.PI);
-            ctx.fillStyle = gradient;
-            ctx.fill();
-            ctx.restore();
+                // Draw player indicator
+                ctx.save();
+                const gradient = ctx.createRadialGradient(
+                    constrainedX, constrainedY, 2,
+                    constrainedX, constrainedY, player.size
+                );
+                const baseColor = player.color;
+                gradient.addColorStop(0, baseColor.replace('70%)', '80%)'));  // More opaque center
+                gradient.addColorStop(1, baseColor.replace('70%)', '0%)'));   // Transparent edge
+
+                ctx.beginPath();
+                ctx.arc(constrainedX, constrainedY, player.size, 0, 2 * Math.PI);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                ctx.restore();
+            });
         }
         
         // Start game
