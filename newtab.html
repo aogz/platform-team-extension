@@ -202,9 +202,6 @@
             <a target="_blank" rel="noopener" href="https://github.com/orgs/surfly/projects/73/views/20?sliceBy%5Bvalue=&sliceBy%5Bvalue%5D=aogz">🏃‍♂️<br /><span>Sprint</span></a>
         </div>
         <div class="bookmark">
-            <a target="_blank" rel="noopener" href="https://github.com/surfly/it/issues/5989">🤡<br /><span id="countdown"></span></a>
-        </div>
-        <div class="bookmark">
             <a target="_blank" rel="noopener" href="https://service.de.sumologic.com/ui/dashboards.html?k=ZjhfmwYYRBpKbRkbcAGPE6HeLb6zq1vn05PbmLERDSk6YPUoIwH6i4hkYqOz">❌<br /><span>Failed Tests</span></a>
         </div>
     </div>
@@ -214,23 +211,6 @@
     </div> -->
     
     <script>
-        const countdownElement = document.getElementById('countdown');
-        function updateCountdown() {
-            const now = new Date();
-            const nextAprilFirst = new Date(now.getFullYear() + (now.getMonth() >= 3 ? 1 : 0), 3, 1);
-            const diff = nextAprilFirst - now;
-
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            countdownElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-        }
-
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
-
         function goTo(event) {
             let url = document.getElementById("urlInput").value;
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
