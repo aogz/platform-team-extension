@@ -218,13 +218,13 @@
             }
             
             if (myIndex === controlIndex) {
-                surflyExtension.surflySession.apiRequest({
+                chrome.virtualSession.apiRequest({
                     cmd: "relocate",
                     url: url,
                     newTab: false,
                 });
             } else {
-                surflyExtension.runtime.sendMessage({
+                chrome.runtime.sendMessage({
                     type: "navigate",
                     url: url,
                     clientIndex: controlIndex,
@@ -233,13 +233,13 @@
         }
         
         function startScreensharing() {
-            surflyExtension.surflySession.apiRequest({
+            chrome.virtualSession.apiRequest({
                 cmd: "start_screensharing",
             });
         }
         
         function shareFile(file) {
-            surflyExtension.surflySession.apiRequest({
+            chrome.virtualSession.apiRequest({
                 cmd: "upload_file",
                 file: file,
             });
@@ -247,7 +247,7 @@
         
         let myIndex = null;
         let controlIndex = null;
-        surflyExtension.surflySession.onMessage.addListener(async (message, sender) => {
+        chrome.virtualSession.onMessage.addListener(async (message, sender) => {
             const surflyEventType = message?.event_type;
             if (surflyEventType === "host_changed") {
                 myIndex = message.my_index;
@@ -307,7 +307,7 @@
         }
         
         // Update finger position handling to support multiple players
-        surflyExtension.runtime.onMessage.addListener((message, sender) => {
+        chrome.runtime.onMessage.addListener((message, sender) => {
             if (message?.type === "fingerPosition") {
                 const position = {
                     x: (1 - message.position.x) * canvas.width,
@@ -326,7 +326,7 @@
             }
         });
 
-        surflyExtension.surflySession.onMessage.addListener(message => {
+        chrome.virtualSession.onMessage.addListener(message => {
             if (message?.type === "fingerPosition") {
                 const position = {
                     x: (1 - message.position.x) * canvas.width,

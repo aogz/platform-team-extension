@@ -145,7 +145,7 @@
                         const y = indexFinger.y * this.canvas.height;
                         this.drawHand({ x, y });
                         
-                        surflyExtension.tabs.sendMessage(null, {
+                        chrome.tabs.sendMessage(null, {
                             type: "fingerPosition",
                             position: {
                                 x: indexFinger.x, // Send normalized coordinates (0-1)
@@ -153,7 +153,7 @@
                             }
                         });
 
-                        surflyExtension.surflySession.apiRequest({cmd: 'broadcast_message', message: {
+                        chrome.virtualSession.apiRequest({cmd: 'broadcast_message', message: {
                             type: "fingerPosition",
                             clientIndex: clientIndex,
                             position: {
@@ -227,7 +227,7 @@
 
         function init() {
             let handlerAdded = false;
-            surflyExtension.surflySession.onMessage.addListener(message => {
+            chrome.virtualSession.onMessage.addListener(message => {
                 if (message?.msg === 'get_session_participants' && !handlerAdded) {
                     const me = message.participants.find(participant => !!participant.self);
                     clientIndex = me.client_index;
@@ -247,7 +247,7 @@
                 }
             })
 
-            surflyExtension.surflySession.apiRequest({cmd: 'get_session_participants'})
+            chrome.virtualSession.apiRequest({cmd: 'get_session_participants'})
         }
 
         setTimeout(init, 1000)
